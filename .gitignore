@@ -1,0 +1,3 @@
+.env
+./apps/nginx/certs/selfsigned.crt
+./apps/nginx/certs/selfsigned.key
