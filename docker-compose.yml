@@ -17,12 +17,15 @@ services:
       - "4433:4433" # plex https port
       - "8082:8082" # nextcloud http port
       - "4434:4434" # nextcloud https port
+      - "8083:8083" # photoprism http port
+      - "4435:4435" # photoprism https port
     extra_hosts:
       - "localnode:${NGINX_LOCAL_NODE_ID}"
     depends_on:
       - pihole
       - homer
       - plex
+      - photoprism
     # command: [nginx-debug, '-g', 'daemon off;']
     networks:
       - proxy
@@ -146,7 +149,57 @@ services:
       - nextcloud_redis
     networks:
       - nextcloud
+  
+  photoprism:
+    image: photoprism/photoprism:latest
+    container_name: photoprism
+    depends_on:
+      - photoprism_db
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    environment:
+      - PHOTOPRISM_ADMIN_PASSWORD=${PHOTOPRISM_ADMIN_PASSWORD}
+      - PHOTOPRISM_ORIGINALS_LIMIT=5000
+      - PHOTOPRISM_HTTP_COMPRESSION=gzip
+      - PHOTOPRISM_DATABASE_DRIVER=mysql
+      - PHOTOPRISM_DATABASE_SERVER=${PHOTOPRISM_DATABASE_SERVER}
+      - PHOTOPRISM_DATABASE_NAME=${PHOTOPRISM_DATABASE_NAME}
+      - PHOTOPRISM_DATABASE_USER=${PHOTOPRISM_DATABASE_USER}
+      - PHOTOPRISM_DATABASE_PASSWORD=${PHOTOPRISM_DATABASE_PASSWORD}
+      - PHOTOPRISM_SITE_URL=http://localhost:2342/  # Public PhotoPrism URL
+      - PHOTOPRISM_SITE_TITLE=PhotoPrism
+      - PHOTOPRISM_SITE_CAPTION="Browse Your Life
+      - HOME=/photoprism
+    working_dir: "/photoprism"
+    volumes:
+      - "${PHOTOPRISM_PICTURES_LOCATION}:/photoprism/originals"
+      - "${PHOTOPRISM_IMPORT_LOCATION}:/photoprism/import"
+      - "${PHOTOPRISM_SETTINGS_LOCATION}:/photoprism/storage"
+    networks:
+      - proxy
+      - photoprism
+
+  photoprism_db:
+    restart: unless-stopped
+    image: mariadb:10.5
+    container_name: photoprism_db
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    command: mysqld --transaction-isolation=READ-COMMITTED --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512 --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=50
+    volumes: # Don't remove permanent storage for index database files!
+      - "${PHOTOPRISM_DB_DATA_LOCATION}:/var/lib/mysql"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${PHOTOPRISM_DATABASE_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${PHOTOPRISM_DATABASE_NAME}
+      - MYSQL_USER=${PHOTOPRISM_DATABASE_USER}
+      - MYSQL_PASSWORD=${PHOTOPRISM_DATABASE_PASSWORD}
+    networks:
+      - photoprism
 
 networks:
   proxy:
   nextcloud:
+  photoprism:
