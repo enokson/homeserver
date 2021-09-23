@@ -20,6 +20,8 @@ services:
       - "4434:4434" # nextcloud https port
       - "8083:8083" # photoprism http port
       - "4435:4435" # photoprism https port
+      - "8084:8084" # wekan http port
+      - "4436:4436" # wekan https port
     extra_hosts:
       - "localnode:${NGINX_LOCAL_NODE_ID}"
     depends_on:
@@ -200,7 +202,39 @@ services:
     networks:
       - photoprism
 
+  wekandb:
+    image: mongo:4.4
+    container_name: wekandb
+    restart: always
+    command: mongod --logpath /dev/null --oplogSize 128 --quiet
+    networks:
+      - wekan
+    expose:
+      - 27017
+    volumes:
+      - ${WEKAN_DB_DATA_LOCATION}:/data/db
+      - ${WEKAN_DB_DUMP_LOCATION}:/dump
+
+  wekan:
+    image: quay.io/wekan/wekan
+    container_name: wekan
+    restart: always
+    networks:
+      - wekan
+      - proxy
+    environment:
+      - MONGO_URL=mongodb://wekandb:27017/wekan
+      - ROOT_URL=http://localhost  #   <=== using only at same laptop/desktop where Wekan is installed
+      - WITH_API=true
+      - RICHER_CARD_COMMENT_EDITOR=false
+      - CARD_OPENED_WEBHOOK_ENABLED=false
+      - BIGEVENTS_PATTERN=NONE
+      - BROWSER_POLICY_ENABLED=true
+    depends_on:
+      - wekandb
+
 networks:
   proxy:
   nextcloud:
   photoprism:
+  wekan:
