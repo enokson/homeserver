@@ -2,6 +2,7 @@ version: "3"
 
 # More info at https://github.com/pi-hole/docker-pi-hole/ and https://docs.pi-hole.net/
 services:
+
   web:
     image: nginx
     container_name: nginx-proxy
@@ -14,13 +15,17 @@ services:
       - "443:443" # https proxy
       - "8081:8081" # plex http port
       - "4433:4433" # plex https port
+      - "8082:8082" # nextcloud http port
+      - "4434:4434" # nextcloud https port
     extra_hosts:
       - "localnode:${NGINX_LOCAL_NODE_ID}"
     depends_on:
       - pihole
       - homer
       - plex
-    command: [nginx-debug, '-g', 'daemon off;']
+    # command: [nginx-debug, '-g', 'daemon off;']
+    networks:
+      - proxy
 
   pihole:
     container_name: pihole
@@ -42,6 +47,8 @@ services:
     cap_add:
       - NET_ADMIN
     restart: unless-stopped
+    networks:
+      - proxy
 
   homer:
     container_name: homer
@@ -50,6 +57,8 @@ services:
       - "./apps/homer/logos:/www/assets/logos/"
       - "./apps/homer/config.yml:/www/assets/config.yml:ro"
       # - "${HOMER_ASSETS_LOCATION}:/www/assets"
+    networks:
+      - proxy
 
   plex:
     image: ghcr.io/linuxserver/plex
@@ -72,3 +81,72 @@ services:
       - ${PLEX_LIBRARY_LOCATION}/tv/:/tv
       - ${PLEX_LIBRARY_LOCATION}/movies:/movies
     restart: unless-stopped
+    networks:
+      - proxy
+
+  nextcloud_db:
+    image: postgres
+    container_name: nextcloud_db
+    restart: always
+    volumes:
+      - ${NEXTCLOUD_DB_DATA_LOCATION}:/var/lib/postgresql/data
+    environment: 
+      - POSTGRES_DB=${NEXTCLOUD_DB_NAME}
+      - POSTGRES_USER=${NEXTCLOUD_DB_USER}
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+    networks:
+      - nextcloud
+
+  nextcloud_redis:
+    image: redis
+    container_name: nextcloud_redis
+    restart: always
+    networks:
+      - nextcloud
+
+  nextcloud_app:
+    image: nextcloud:fpm
+    container_name: nextcloud
+    restart: always
+    volumes:
+      - ${NEXTCLOUD_DATA_LOCATION}:/var/www/html
+    environment:
+      - POSTGRES_HOST=${NEXTCLOUD_DB_HOST}
+      - POSTGRES_DB=${NEXTCLOUD_DB_NAME}
+      - POSTGRES_USER=${NEXTCLOUD_DB_USER}
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+      - REDIS_HOST=${NEXTCLOUD_REDIS_HOST}
+    depends_on:
+      - nextcloud_db
+      - nextcloud_redis
+    networks:
+      - nextcloud
+
+  nextcloud_web:
+    image: nginx
+    container_name: nextcloud_web
+    restart: always
+    volumes:
+      - "./apps/nextcloud/nginx.conf:/etc/nginx/nginx.conf:ro"
+      - ${NEXTCLOUD_DATA_LOCATION}:/var/www/html:ro
+    depends_on:
+      - nextcloud_app
+    networks:
+      - proxy
+      - nextcloud
+
+  nextcloud_cron:
+    image: nextcloud:fpm
+    restart: always
+    volumes:
+      - ${NEXTCLOUD_DATA_LOCATION}:/var/www/html
+    entrypoint: /cron.sh
+    depends_on:
+      - nextcloud_db
+      - nextcloud_redis
+    networks:
+      - nextcloud
+
+networks:
+  proxy:
+  nextcloud:
