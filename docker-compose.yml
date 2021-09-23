@@ -22,6 +22,8 @@ services:
       - "4435:4435" # photoprism https port
       - "8084:8084" # wekan http port
       - "4436:4436" # wekan https port
+      - "8085:8085" # airsonic http port
+      - "4437:4437" # airsonic https port
     extra_hosts:
       - "localnode:${NGINX_LOCAL_NODE_ID}"
     depends_on:
@@ -233,8 +235,40 @@ services:
     depends_on:
       - wekandb
 
+  airsonic_db:
+    image: postgres:latest
+    container_name: airsonic_db
+    volumes:
+      - ${AIRSONIC_DB_DATA_LOCATION}:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${AIRSONIC_DB_NAME}
+      - POSTGRES_USER=${AIRSONIC_DB_USER}
+      - POSTGRES_PASSWORD=${AIRSONIC_DB_PASSWORD}
+    networks:
+      - airsonic
+
+  airsonic:
+    image: airsonicadvanced/airsonic-advanced:latest
+    container_name: airsonic
+    environment:
+      - spring_datasource_url=${AIRSONIC_DB_URL}
+      - spring_datasource_username=${AIRSONIC_DB_USER}
+      - spring_datasource_password=${AIRSONIC_DB_PASSWORD}
+      - spring_liquibase_parameters_userTableQuote="
+    volumes:
+      - ${AIRSONIC_MUSIC_LOCATION}:/var/music
+      - ${AIRSONIC_PODCAST_LOCATION}:/var/podcasts
+      - ${AIRSONIC_PLAYLIST_LOCATION}:/var/playlists
+      - ${AIRSONIC_DATA_LOCATION}:/var/airsonic
+    depends_on:
+      - airsonic_db
+    networks:
+      - proxy
+      - airsonic
+  
 networks:
   proxy:
   nextcloud:
   photoprism:
   wekan:
+  airsonic:
