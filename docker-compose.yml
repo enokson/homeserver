@@ -31,6 +31,8 @@ services:
       - homer
       - plex
       - photoprism
+      - wekan
+      - airsonic
     # command: [nginx-debug, '-g', 'daemon off;']
     networks:
       - proxy
