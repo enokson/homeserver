@@ -5,16 +5,15 @@ services:
     image: nginx
     volumes:
       - "./nginx.conf:/etc/nginx/nginx.conf:ro"
-      - "./certs/:/etc/nginx/certs"
+      - "~/homeserver/certs/:/etc/nginx/certs"
       # - "./apps/otranscribe/dist/:/transcribe:ro"
     ports:
-      - "127.0.0.1:85:80" # redirect to https proxy
-      - "86:81" # non https server proxy
-      - "4433:443" # https proxy
+      - "10003:80" # redirect to https proxy
+      - "10004:443" # https proxy
     depends_on:
       - heimdall
 
-  heimdall:
+  app:
     image: lscr.io/linuxserver/heimdall
     container_name: heimdall
     environment:

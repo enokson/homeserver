@@ -11,8 +11,8 @@ services:
       # - "./apps/otranscribe/dist/:/transcribe:ro"
     ports:
       # - "127.0.0.1:81:80" # redirect to https proxy
-      - "1001:80" # non https server proxy
-      - "1002:443" # https proxy
+      - "10001:80" # non https server proxy
+      - "10002:443" # https proxy
     depends_on:
       - app
 
