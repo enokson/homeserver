@@ -16,5 +16,5 @@ subjectAltName = @alt_names
 subjectAltName = @alt_names
 [alt_names]
 IP.1 = 127.0.0.1
-IP.2 = 192.168.1.
+IP.2 = 192.168.1.XX
 DNS.1 = homeserver.local
